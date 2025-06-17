@@ -1,0 +1,231 @@
+library("readxl")
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(multcomp)
+library(MASS)
+library(reshape2)
+
+
+userID="yuan-admin"
+setwd(paste("C:/Users/", userID, "/Dropbox/collabration/EIPH", sep=""))
+
+dat_2yrold <- read_excel("2-yr-old mastersheet FINAL 090722.xlsx", sheet = 1)
+ind= which(dat_2yrold$Track == "Gulftsream Park")
+dat_2yrold$Track[ind]="Gulfstream Park"
+
+names(dat_2yrold)
+dat_2yrold$`Speed Index`=as.numeric(dat_2yrold$`Speed Index`)
+dat_2yrold$`Distance (meters)`=as.numeric(dat_2yrold$`Distance (meters)`)
+
+dat_2yrold$condition = dat_2yrold$`Track Condition`
+ind= which(dat_2yrold$`Track Condition` %in% c( "FAst", "Fast (sealed)", "Fast (Sealed)") )
+dat_2yrold$condition[ind] = "Fast"
+ind= which(dat_2yrold$`Track Condition` %in% c( "Muddy", "Muddy (sealed)", "Slopppy (sealed)","Sloppy",
+                                                "Sloppy (sealed)", "Soft", "Yielding" ))
+dat_2yrold$condition[ind] = "Slow"
+table(dat_2yrold$condition)
+
+dat_2yrold$dist_grp= as.factor(cut(dat_2yrold$`Distance (meters)`,c(0,1250,1550,4000), 
+                                   labels=c("sprint", "intermediate", "long")) )##very few long distance
+
+dat_2yrold$SI = dat_2yrold$`Speed Index`
+
+table(dat_2yrold$dist_grp, dat_2yrold$Lasix)  
+
+
+with(dat_2yrold, summary(aov(as.numeric(`Speed Index`)~as.factor(Lasix))))
+
+with(dat_2yrold, summary(aov(as.numeric(`Speed Index`)~as.factor(Lasix)*as.factor(`Consensus EIPH`))))
+#with(dat_2yrold, summary(aov(as.numeric(`Speed Index`)~as.factor(Lasix)+as.factor(`Consensus EIPH`))))
+tmp= with(dat_2yrold, (aov(as.numeric(`Speed Index`)~as.factor(Lasix)*as.factor(`Consensus EIPH`))))
+qqnorm(tmp$residuals) 
+hist(tmp$residuals) 
+shapiro.test(tmp$residuals)
+
+dat_2yrold$EIPH3=dat_2yrold$`Consensus EIPH`
+ind =which(dat_2yrold$`Consensus EIPH`>=3)
+dat_2yrold$EIPH3[ind]=3
+
+group_by(dat_2yrold, as.factor(paste(Lasix,EIPH3, sep="_") ) )%>%
+  summarise(
+    count = n(),
+    mean = mean(`Speed Index`, na.rm = TRUE),
+    median = median(`Speed Index`, na.rm = TRUE),
+    sd = sd(`Speed Index`, na.rm = TRUE)
+  )
+
+
+pom_pvalue = function(mod){
+  (ctable <- coef(summary(mod)))  
+  p <- pnorm(abs(ctable[, "t value"]), lower.tail = FALSE) * 2
+  return( cbind(ctable, "p value" = p) )
+}
+
+# pom1_SI <- dat_2yrold %>%  with(polr(as.factor(`Consensus EIPH`) ~ `Speed Index`,  Hess=TRUE)) 
+# pom_pvalue(pom1_SI)
+# 
+# pom1_SI_dist <- dat_2yrold %>%  with(polr(as.factor(`Consensus EIPH`) ~ `Speed Index`*dist_grp,  Hess=TRUE))  
+# pom_pvalue(pom1_SI_dist)
+# 
+# pom1_SI_condition <- dat_2yrold %>%  with(polr(as.factor(`Consensus EIPH`) ~ `Speed Index`*condition,  Hess=TRUE))  
+# pom_pvalue(pom1_SI_condition)
+
+summary(glm(I(as.numeric(EIPH3) >= 1) ~ Lasix, family="binomial", data = dat_2yrold))
+summary(glm(I(as.numeric(EIPH3) >= 2) ~ Lasix, family="binomial", data = dat_2yrold))
+summary(glm(I(as.numeric(EIPH3) >= 3) ~ Lasix, family="binomial", data = dat_2yrold))
+
+summary(glm(I(as.numeric(EIPH3) >= 1) ~ SI*Lasix, family="binomial", data = dat_2yrold))
+summary(glm(I(as.numeric(EIPH3) >= 2) ~ SI*Lasix, family="binomial", data = dat_2yrold))
+summary(glm(I(as.numeric(EIPH3) >= 3) ~ SI*Lasix, family="binomial", data = dat_2yrold))
+
+
+summary(glm(I(as.numeric(EIPH3) >= 1) ~ SI, family="binomial", data = dat_2yrold))
+summary(glm(I(as.numeric(EIPH3) >= 2) ~ SI, family="binomial", data = dat_2yrold))
+summary(glm(I(as.numeric(EIPH3) >= 3) ~ SI, family="binomial", data = dat_2yrold))
+
+
+summary(glm(I(as.numeric(EIPH3) >= 1) ~ SI*dist_grp, family="binomial", data = dat_2yrold))
+summary(glm(I(as.numeric(EIPH3) >= 2) ~ SI*dist_grp, family="binomial", data = dat_2yrold))
+summary(glm(I(as.numeric(EIPH3) >= 3) ~ SI*dist_grp, family="binomial", data = dat_2yrold))
+
+
+summary(glm(I(as.numeric(EIPH3) >= 1) ~ SI*dist_grp*Lasix, family="binomial", data = dat_2yrold))
+summary(glm(I(as.numeric(EIPH3) >= 2) ~ SI*dist_grp*Lasix, family="binomial", data = dat_2yrold))
+summary(glm(I(as.numeric(EIPH3) >= 3) ~ SI*dist_grp*Lasix, family="binomial", data = dat_2yrold))
+
+
+newdat0 <- data.frame(
+  dist_grp = rep(c("sprint", "intermediate", "long"), 100),
+  SI = rep(seq(from = 1, to = 100, length.out = 100), 3))
+
+glm_SI_dist=glm(I(as.numeric(EIPH3) >= 3) ~ SI*dist_grp, family="binomial", data = dat_2yrold)
+
+newdat <- cbind(newdat0, predict(glm_SI_dist, newdat0, type = "response"))
+lnewdat <- melt(newdat, id.vars = c("dist_grp", "SI"),
+                variable.name = "EIPH", value.name="Probability")
+ggplot(lnewdat, aes(x = SI, y = Probability)) +
+  geom_line() + facet_grid(~ dist_grp)+labs(title="Probability of EIPH >=3",
+                                            x ="Speed Index")
+
+
+glm_SI_dist=glm(I(as.numeric(EIPH3) >= 1) ~ SI*dist_grp, family="binomial", data = dat_2yrold)
+newdat <- cbind(newdat0, predict(glm_SI_dist, newdat0, type = "response"))
+lnewdat <- melt(newdat, id.vars = c("dist_grp", "SI"),
+                variable.name = "EIPH", value.name="Probability")
+ggplot(lnewdat, aes(x = SI, y = Probability)) +
+  geom_line() + facet_grid(~ dist_grp)+labs(title="Probability of EIPH >=1",
+                                            x ="Speed Index")
+
+
+newdat0 <- data.frame(
+  Lasix = rep(c("Y", "N"), 100),
+  SI = rep(seq(from = 1, to = 100, length.out = 100), 2))
+
+glm_SI_dist=glm(I(as.numeric(EIPH3) >= 1) ~ SI*Lasix, family="binomial", data = dat_2yrold)
+
+newdat <- cbind(newdat0, predict(glm_SI_dist, newdat0, type = "response"))
+
+lnewdat <- melt(newdat, id.vars = c("Lasix", "SI"),
+                variable.name = "EIPH", value.name="Probability")
+ggplot(lnewdat, aes(x = SI, y = Probability)) +
+  geom_line() + facet_grid(~Lasix )+labs(title="Probability of EIPH >=1",
+                                         x ="Speed Index")
+
+
+glm_SI_dist=glm(I(as.numeric(EIPH3) >= 3) ~ SI*Lasix, family="binomial", data = dat_2yrold)
+
+newdat <- cbind(newdat0, predict(glm_SI_dist, newdat0, type = "response"))
+
+lnewdat <- melt(newdat, id.vars = c("Lasix", "SI"),
+                variable.name = "EIPH", value.name="Probability")
+ggplot(lnewdat, aes(x = SI, y = Probability)) +
+  geom_line() + facet_grid(~Lasix )+labs(title="Probability of EIPH >=3",
+                                         x ="Speed Index")
+
+
+pom2_SI <- dat_2yrold %>%  with(polr(as.factor(EIPH3) ~ `Speed Index`,  Hess=TRUE)) 
+pom_pvalue(pom2_SI)
+
+pom2_SI_dist <- dat_2yrold %>%  with(polr(as.factor(EIPH3) ~ SI*dist_grp,  Hess=TRUE))  
+pom_pvalue(pom2_SI_dist)
+pom_pvalue(pom2_SI_dist)[,4] < 0.05
+
+pom2_SI_Lasix <- dat_2yrold %>%  with(polr(as.factor(EIPH3) ~ SI*Lasix,  Hess=TRUE))  
+pom_pvalue(pom2_SI_Lasix)
+
+
+pom2_SI_dist_lasix <- dat_2yrold %>%  with(polr(as.factor(EIPH3) ~ SI*dist_grp*Lasix,  Hess=TRUE))  
+pom_pvalue(pom2_SI_dist_lasix)
+pom_pvalue(pom2_SI_dist_lasix)[,4] < 0.05
+
+
+pom2_SI_condition <- dat_2yrold %>%  with(polr(as.factor(EIPH3) ~ `Speed Index`*condition,  Hess=TRUE))  
+pom_pvalue(pom2_SI_condition)
+
+dat_2yrold %>% filter(`Speed Index`>30) %>%  with(polr(as.factor(`Consensus EIPH`) ~ `Speed Index`,  Hess=TRUE)) %>% confint()
+
+dat_2yrold %>% filter(`Speed Index`>30) %>%  with(polr(as.factor(`Consensus EIPH`) ~ `Distance (meters)`,  Hess=TRUE)) %>% confint()
+dat_2yrold %>%  with(polr(as.factor(`Consensus EIPH`) ~ `Speed Index`+`Distance (meters)`,  Hess=TRUE)) %>% confint()
+
+ggplot(dat_2yrold, aes(`Speed Index`, as.numeric(EIPH3),  color=dist_grp))+geom_point()+geom_smooth()+
+  labs(x="Speed Index",
+       y="Consensus EIPH",
+       caption=paste(" EIPH vs ", "Speed Index", sep="" ) )
+
+ggplot(dat_2yrold, aes(`Speed Index`, as.numeric(EIPH3),  color=condition))+geom_point()+geom_smooth()+
+  labs(x="Speed Index",
+       y="Consensus EIPH",
+       caption=paste(" EIPH vs ", "Speed Index", sep="" ) )
+
+
+
+newdat <- data.frame(
+  dist_grp = rep(c("sprint", "intermediate", "long"), 100),
+  SI = rep(seq(from = 1, to = 100, length.out = 100), 3))
+
+newdat <- cbind(newdat, predict(pom2_SI_dist, newdat, type = "probs"))
+
+lnewdat <- melt(newdat, id.vars = c("dist_grp", "SI"),
+                variable.name = "EIPH", value.name="Probability")
+## view first few rows
+#head(lnewdat)
+ggplot(lnewdat, aes(x = SI, y = Probability, colour = EIPH)) +
+  geom_line() + facet_grid(~ dist_grp  )
+
+#sum(subset(lnewdat, SI==1 & dist_grp == "sprint")$Probability)
+
+
+newdat <- data.frame(
+  Lasix = rep(c("Y", "N"), 100),
+  SI = rep(seq(from = 1, to = 100, length.out = 100), 2))
+
+newdat <- cbind(newdat, predict(pom2_SI_Lasix, newdat, type = "probs"))
+
+lnewdat <- melt(newdat, id.vars = c("Lasix", "SI"),
+                variable.name = "EIPH", value.name="Probability")
+
+## view first few rows
+head(lnewdat)
+ggplot(lnewdat, aes(x = SI, y = Probability, colour = EIPH)) +
+  geom_line() + facet_grid(~ Lasix )
+
+#sum(subset(lnewdat, SI==1 & dist_grp == "sprint")$Probability)
+
+
+
+newdat <- data.frame(
+  dist_grp = rep(c("sprint", "intermediate", "long"), 100),
+  Lasix = rep(c("Y", "N"), each=150),
+  SI = rep(seq(from = 1, to = 100, length.out = 100), 3))
+
+newdat <- cbind(newdat, predict(pom2_SI_dist_lasix, newdat, type = "probs"))
+
+lnewdat <- melt(newdat, id.vars = c("dist_grp", "Lasix", "SI"),
+                variable.name = "EIPH", value.name="Probability")
+## view first few rows
+head(lnewdat)
+ggplot(lnewdat, aes(x = SI, y = Probability, colour = EIPH)) +
+  geom_line() + facet_grid(dist_grp ~ Lasix, labeller="label_both" )
+
+#sum(subset(lnewdat, SI==1 & dist_grp == "sprint")$Probability)

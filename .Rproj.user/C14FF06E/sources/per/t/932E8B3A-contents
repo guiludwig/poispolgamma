@@ -1,0 +1,134 @@
+require(dplyr)
+require(rgdal)
+require(maptools)
+require(poispolgamma)
+
+# Use better initial values for all methods
+seps <- c(0.336028184101562, 0.303736349517065, 0.668829802972303, 0.338342255632813, 
+          0.329237721480955, 0.569895313176315, 0.564441683379978, 0.688271700596767, 
+          -0.0213348569128571, 0.633290815430697, 0.443366153036936, 0.950862599268207, 
+          0.715034391765546, 0.852879288704676, 0.538183371479168, 0.818258219925178, 
+          1.37640717882024, 0.541294535374926, 0.986080743128093, 2.1119845769256, 
+          0.747205398398223, 0.666396731158591, 0.73240144064082, 1.08013764075429, 
+          1.64293091651128, 0.690570890413632, 1.10953058697799, 1.15495153937034, 
+          0.469926188620152, 0.524452350726566, 0.300334636724518, 1.30027830921155, 
+          0.895723435341736, 0.767471827029688, 1.11502440639885, 0.00150496279414634, 
+          0.00213439739018289, 0.74667692953977, 0.420951008897619, 0.662800682579784, 
+          1.09425969825749, 0.678453870742563, 1.56891957768014, 0.952170172454212, 
+          0.993499998066725, 0.948917735659007, 0.301466423570181, 0.00387195301087601, 
+          0.486294667807562, 0.464006962743067, 1.11216357653463, 0.483849237698781, 
+          0.351125572815312, 0.563190246643497, 0.910548423723147, 0.392310968906439, 
+          0.578756673473423, 1.44916818548601, 1.36747644741379, 0.492317746519346, 
+          0.543148746803045, 0.469827750249502, 0.95000369563727, 0.768373632665478, 
+          0.64807566864454, 0.919081821156962, 0.796731735461653, 0.644209531006839, 
+          0.803881984888076, 0.841390831517199, 1.10352355395036, 0.782609444416196, 
+          1.27825982275532, 1.91369955108823, 1.15518134178248, 1.46923176852255, 
+          0.196408081652908, 0.809601324927123, 0.705626697214743, 0.826057488157902, 
+          0.168103616157322, 0.772713748910212, 0.97676130505049, 1.24221538606544, 
+          0.713360505509137, 0.475158239902564, 0.983015637103717, 0.546567741868484, 
+          1.56056776455075, 1.05704560711385, 0.936898995323222, 0.863766427221836, 
+          0.805399909121701, 1.29788347442597, 0.816446629223941, 0.301459193186909, 
+          -0.124921288265321, 0.250322041338268, 0.94835011911804, 0.768293208597057, 
+          0.693257949258772, 1.4053986843992, 0.970390376860183, 0.809572021578619, 
+          0.780077536194137, 0.900762150497305, 1.07390751249528, 0.967474060566122, 
+          1.41233382411738, 1.37929403060178, 0.694216506416896, 1.32386602196691, 
+          0.682182158953519, 0.828230800687538, 0.640219596693377, 0.737426934211664, 
+          0.77696777199753, 0.492512186165718, 0.328393150423877, 0.726641143196421, 
+          0.550897447076894, 0.901240229839239, 0.471669532605476, 1.1888473156047, 
+          0.977181372978959, 1.21819254089142, 0.808678358108191, 0.762389020028997, 
+          0.400367244042551, 1.67896477461658, 0.607279326646935, 1.39428529552923, 
+          0.532040632427947, 0.172390446278946, 0.976976015781069, 0.173206870601322, 
+          0.480241516625339, 0.477151190002187, 0.349478049922798, 2.1243380127099, 
+          0.712967555602675, 0.406983472163258, -0.0310611372534139, -0.197405956268665, 
+          -0.0807541998043678, 0.297614873950893, 0.125205805891605, -0.190749646680246, 
+          -0.0513417045621365, 0.865687874150926, -0.00780218423773702, 
+          0.417153074742669, 0.868479030898642, 1.0559791330791, 1.13335026921754, 
+          0.38403670671691, 1.30632860228003, 1.65614235127628, 1.23574565393067)
+
+# Dataset source: https://www.data.rio/datasets/limite-bairro
+m <- readOGR("Limite_Bairro-shp/Limite_Bairro.shp",
+             stringsAsFactors = FALSE,
+             use_iconv = TRUE, encoding = "utf8")
+m <- spTransform(m, CRS("+proj=longlat +ellps=WGS84 +datum=WGS84"))
+
+DF <- read.csv(file = "rio_complete.csv", fileEncoding = "utf8")
+count <- matrix(DF[,"count"], ncol = 1)
+# Standardize covariates
+
+X <- cbind(1,DF[,c("life.expectancy.at.birth", "adult.literacy.rate", "per.capita.income", "pop.density","N.DuqueDeCaxias", "N.SaoJoaoDeMeriti","N.Nilopolis", "N.NovaIguacu", "N.Itaguai")])
+X$per.capita.income <- log(X$per.capita.income)
+colnames(X)[4] <- "log.per.capita.income"
+X[,6] <- apply(X[,6:8], 1, max)
+colnames(X)[6] <- "Northeast.cities"
+X[,7:10] <- NULL
+X <- as.matrix(X)
+
+codbnum <- DF$CODBNUM
+
+set.seed(1)
+modelSS <- poispolgamma.fit(y = as.matrix(count), h = 100, useSS = TRUE,
+                            x = as.matrix(X),
+                            coords = as.matrix(DF[,c("x","y")]),
+                            startingEpsilon = seps, # as.numeric(tail(modelSS$epsilon, 1))
+                            outer.it = 1000, 
+                            SShyperpar = c(a.SS = 1, b.SS = 1, d0 = 5, e0 = 200)) # 1000
+
+# dig <- function(x, a, b) return(b^a / gamma(a) * (1/x)^(a+1)*exp(-b/x) * (x>0))
+# dig <- Vectorize(dig, "x")
+# x <- seq(0,100, l = 500)
+# plot(x, dig(x, 5, 200), type = "l")
+# nu0 <- 0.005 
+# 
+
+# Outside of Dropbox!
+save(modelSS, file = "~/7_rio_spikeslab.Rdata")
+
+MCMC.samples <- nrow(modelSS$SSz) # Was SSpi in previous version
+nu0 <- min(modelSS$SSz)
+
+colMeans(modelSS$SSz[seq(.2*MCMC.samples, MCMC.samples, by = 10), ] - nu0)/(1-nu0)
+
+matrix(colMeans(modelSS$beta[seq(.2*MCMC.samples, MCMC.samples, by = 10), ]), ncol = 1)
+t(apply(modelSS$beta[seq(.2*MCMC.samples, MCMC.samples, by = 10), ], 2, quantile, probs = c(.025, .975)))
+
+temp <- residuals(modelSS)
+boxplot(sweep(-1*sweep(temp$posteriorAverageRate, 2, modelSS$y), 
+        2, apply(-1*sweep(temp$posteriorAverageRate, 2, modelSS$y), 2, sd)))
+
+plot(density(modelSS$SSparameters[seq(.2*MCMC.samples, MCMC.samples, by = 10),1]))
+matplot(modelSS$SSparameters[seq(.2*MCMC.samples, MCMC.samples, by = 10),-1], type = "l")
+
+
+require(dplyr)
+require(tidyr)
+require(ggplot2)
+
+temp <- modelSS$SSparameters[seq(.2*MCMC.samples, MCMC.samples, by = 10),-1]
+colnames(temp) <- paste0("tau", 0:(ncol(temp)-1))
+
+temp %>% 
+  as.data.frame %>%
+  pivot_longer(cols = everything(), names_to = "coef", values_to = "tau") %>%
+  ggplot(aes(x = tau, col = coef, fill = coef)) + 
+  geom_density(alpha = 0.2) +
+  theme_classic() + theme(legend.position = "top")
+
+# > modelSP
+# Credibility Intervals for beta:
+#   beta 0       beta 1      beta 2     beta 3    beta 4    beta 5
+# 2.5%  -32.59256 -0.101604012 -0.36147866 0.09340595 -0.158097 0.1994983
+# 97.5% -11.87673  0.003095296 -0.06129526 1.19113902 19.694963 1.8234946
+# Credibility Intervals for sigma2, nugget and phi:
+#   sigma^2 tau^2       phi
+# 2.5%  12.58504  0.01 0.3032659
+# 97.5% 68.78468  0.01 1.4064474
+# Average acceptance rate for phi:  0.719
+# > modelSPnngp
+# Credibility Intervals for beta:
+#   beta 0     beta 1     beta 2     beta 3   beta 4     beta 5
+# 2.5%  -12.66731 -0.2321314 -0.2060076 -0.9325661 10.20676 -0.3046102
+# 97.5%  17.55460  0.0449797  0.2239658  1.1145879 68.23780  1.8599845
+# Credibility Intervals for sigma2, nugget and phi:
+#   sigma^2     tau^2       phi
+# 2.5%  0.424323 0.4972662  3.060133
+# 97.5% 6.881398 1.9491254 19.062792

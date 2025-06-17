@@ -1,0 +1,381 @@
+---
+title: "generalized Linear Mixed Model"
+author: "Y.Wang"
+date: "April 2023"
+output: pdf_document
+---
+
+#Generalized Linear Model Review
+
+Generalized linear models (or GLMs) are an extension of linear  models to allow response variables from different distributions, such as binary
+responses. In GLM, each response $Y$ is assumed to be generated from a particular distribution in the exponential family, a large range of probability distributions that includes the normal, binomial, Poisson and gamma distributions, among others. The mean of  the response  depends on the independent variables, $X$, through a link function $g$. 
+such that
+
+\begin{center}
+$g(E(\mathbf{Y}))= \eta=X\beta$
+\end{center}
+where $E(Y)$ is the expected value of Y; $\eta$ is a linear combination of unknown parameters $\beta$ and the predictors $X$.  Let $h=g^{-1}$ be the inverse link function,  we could also model the expectation of $y$ as
+
+\begin{center}$E(\mathbf{Y})=\mathbf{\mu}=h(\eta)$.\end{center}
+##Binary response
+
+When the response data  are binary (taking on only values 0 and 1), the distribution function of $Y$ is generally chosen to be the Bernoulli distribution and the interpretation of $\mu=E{Y}=P(Y=1)=p$ is  the probability  of $Y$ taking on the value one. Since $\mu$ is a probability value, $\mu\in[0,1]$
+There are several popular link functions for binomial functions.
+
+###Logit link function
+\begin{center}$g(\mu)=\ln\left({\mu \over 1-\mu}\right)$ with $h(\eta)=\frac{e^\eta}{1+e^\eta}$ \end{center}
+GLMs with this setup are logistic regression models.
+
+In a logistic model, the outcome is commonly on one of three scales:
+
+-Log odds (also called logits), which is the linearized scale
+
+-Odds ratios (exponentiated log odds), which are not on a linear scale
+
+-Probabilities, which are also not on a linear scale
+
+Probit link function 
+
+Probit link function as popular choice of inverse cumulative distribution function
+Alternatively, the inverse of any continuous cumulative distribution function (CDF) can be used for the link since the CDF's range is  [0,1], the range of the binomial mean. The normal CDF $\Phi$  is a popular choice and yields the probit model. Its link is
+\begin{center} $g(\mu)=\Phi^{-1}(\mu)$ with $h(\eta)=\Phi(\eta)$. \end{center}
+The probit models are more tractable in some situations than logit models. In a Bayesian setting in which normally distributed prior distributions are placed on the parameters, the relationship between the normal priors and the normal CDF link function means that a probit model can be computed using Gibbs sampling, while a logit model generally cannot.
+
+Count response
+
+When the response data  are counts,  the distribution function of $Y$ can be chosen to be the Poisson distribution. We can use a   log link function
+\begin{center}$g(\mu)=\ln(\mu)$ with $h(\eta)=e^\eta$. \end{center}
+
+
+Generalized Linear Mixed Model  (GLMM)
+In GLMM, the linear predictor is summation of fixed effects and random effects as 
+\begin{center}$\eta=X\beta+Zb$\end{center}
+
+ Example 1 A large  health maintenance organization wants to know what patient and physician factors are most related to whether a patient's lung cancer goes into remission after treatment as part of a larger study of treatment outcomes and quality of life in patients with lunger cancer.
+ A variety of outcomes were collected on patients, who are nested within doctors, who are in turn nested within hospitals. There are also a few doctor level variables, such as Experience that we will use in our example.
+ 
+ ```{r warnings=FALSE}
+library(lme4)
+library(lattice)
+library(dplyr)
+library(purrr)
+```
+ 
+```{r}
+setwd("C:/Users/yuan-admin/Dropbox/teaching/STAT574Spring23/R")
+hdp <- read.csv("hdp.csv")
+names(hdp)
+hdp <- within(hdp, {
+  Married <- factor(Married, levels = 0:1, labels = c("no", "yes"))
+  DID <- factor(DID)
+  HID <- factor(HID)
+})
+
+dim(hdp)
+
+hdp %>%select_if(is.numeric) %>%map_dbl(mean)
+```
+We narrow it to three predictors for the demonstration. IL6 measures the concentration of interleukin-6, one of a group of related proteins made by leukocytes (white blood cells) whose predominant role is the promotion of tumor growth. CRP is a protein that helps you fight infections. High CRP levels have been linked with an increased risk of developing cancer.  
+
+##A single-level model with groups by doctor
+```{r}
+m0 <- glmer(remission ~ IL6 + CRP +Married+
+    (1 | DID), data = hdp, family = binomial )
+summary(m0)
+
+plot(hdp$IL6, predict(m0, newdata=hdp, type="response"))
+
+fixef(m0)
+Xmat = model.matrix(lm(remission ~ IL6 + CRP +Married, data = hdp))
+
+LP = Xmat%*%fixef(m0) ### The estimated eta for each sample
+
+par(mfrow=c(2,2))
+hist((plogis(LP+1.35)))
+hist(plogis(LP-2.51))
+hist(plogis(LP+0.35))
+hist(plogis(LP-.35))
+
+m1 <- glmer(ntumors ~ IL6 + CRP + Married+
+    (1 | DID), data = hdp, family = poisson(link=log))
+summary(m1)
+
+
+```
+
+
+
+
+
+The interpretation of GLMMs is similar to Generalized Linear Models; however, there is an added
+complexity because of the random effects. In regular logistic regression, the odds ratios
+the expected odds ratio holding all the other predictors fixed. This makes sense as we
+are often interested in statistically adjusting for other effects, such as age, to get the
+"pure" effect of being married or whatever the primary predictor of interest is. The
+same is true with mixed effects logistic models, with the addition that holding
+everything else fixed includes holding the random effect fixed. that is, the odds ratio
+here is the conditional odds ratio for someone holding age and IL6 constant as well
+as for someone with either the same doctor, or doctors with identical random effects.
+Given the model we fitted above, the estimates can be interpreted essentially as always. For example, for IL6, a one
+unit increase in IL6 is associated with a .052 unit decrease in the expected log odds
+of remission with all the other effects holding fixed. 
+
+On the linearized metric (after taking the
+link function), interpretation continues as usual. However, it is often easier to back
+transform the results to the original metric. For example, in a random effects logistic
+model, one might want to talk about the probability of an event given some specific
+values of the predictors. Likewise in a poisson (count) model, one might want to talk
+about the expected count rather than the expected log count. These transformations
+complicate matters because they are nonlinear and so even random intercepts no
+longer play a strictly additive role and instead can have a multiplicative effect.  
+
+ 
+On the other hand, when there is large variability between doctors, the
+relative impact of the fixed effects (such as marital status) may be small. In this case, it
+is useful to examine the effects at various levels of the random effects or to get the
+average fixed effects marginalizing the random effects.
+
+##A two-level model with groups by doctors nested in hospitals
+
+In this examples, doctors are nested within
+hospitals, meaning that each doctor belongs to one and only one hospital. The
+alternative case is sometimes called "cross classified" meaning that a doctor may
+belong to multiple hospitals, such as if some of the doctor's patients are from
+hospital A and others from hospital B.   We
+use the same (1 | ID) general syntax to indicate the intercept (1) varying by some
+ID. 
+
+There are two ways to specify the grouping structure.
+ 
+
+```{r}
+m02 <- glmer(remission ~ IL6 + CRP + Married +
+    (1 | HID: DID)+(1|HID), data = hdp, family = binomial, 
+    control = glmerControl(optimizer = "bobyqa"))
+summary(m02)
+
+
+ 
+m02_short <- glmer(remission ~ IL6 + CRP + Married +
+    (1 | HID/DID), data = hdp, family = binomial, 
+    control = glmerControl(optimizer = "bobyqa"))
+summary(m02_short )
+
+```
+
+In
+glmer you do not need to specify whether the groups are nested or cross classified, R can figure it out based
+on the data.
+
+```{r}
+m02_default <- glmer(remission ~ IL6 + CRP + Married +
+    (1 | DID)+(1|HID), data = hdp, family = binomial, 
+    control = glmerControl(optimizer = "bobyqa"))
+summary(m02_default)
+
+m02_wrong_order<- glmer(remission ~ IL6 + CRP + Married +
+    (1 | DID/HID), data = hdp, family = binomial, 
+    control = glmerControl(optimizer = "bobyqa"))
+summary(m02_wrong_order )
+```
+
+When using the shorthand nesting, the order is important. As seen in the example above (1 | DID/HID) expands to (1|DID) + (1|HID:DID), which is clearly a different model than (1|HID) + (1|HID:DID).  This can be very confusing.
+
+
+
+```{r}
+
+p0 <- predict(m02)           # fitted values
+p1 <- predict(m02,re.form=NA)  # fitted values, unconditional (level-0)
+
+```
+
+
+
+Optimization Overview
+
+In general lme4’s algorithms scale reasonably well with the number of observations and the number of random effect levels. lme4 does a derivative-free (by default) nonlinear optimization step over the top-level parameters. The biggest bottleneck is in the number of top-level parameters, i.e. covariance parameters for lmer fits or glmer fits with nAGQ=0, covariance and fixed-effect parameters for glmer fits with nAGQ>0.  For this reason, “maximal” models involving interactions of factors with several levels each (e.g. (stimulus\*primer | subject)) will be slow (as well as hard to estimate): if the two factors have f1 and f2 levels respectively, then the corresponding lmer fit will need to estimate (f1\*f2)*(f1\*f2+1)/2 top-level parameters.
+
+glmer uses a combination of bobyqa (nAGQ=0 stage) and Nelder_Mead by default. Occasionally, the default optimizer stopping tolerances are unnecessarily strict. These tolerances are specific to each optimizer, and can be set via the optCtrl argument in glmerControl.  
+
+```{r}
+length(getME(m02, "theta"))
+```
+
+glmerControl
+
+setting calc.derivs = FALSE
+
+After finding the best-fit model parameters, using "control = glmerControl(calc.derivs = FALSE)" to turn off this calculation can speed up the fit.
+
+
+optimizer: Built-in optimizers are "Nelder_Mead", "bobyqa", "nlminbwrap" and the default for lmerControl(), "nloptwrap". Any minimizing function that allows box constraints can be used provided that it 
+(1)takes input parameters fn (function to be optimized), par (starting parameter values), lower and upper (parameter bounds) and control (control parameters, passed through from the control argument) and 
+(2) returns a list with (at least) elements par (best-fit parameters), fval (best-fit function value), conv (convergence code, equal to zero for successful convergence) and (optionally) message (informational message, or explanation of convergence failure).
+
+
+
+optCtrl	
+a list of additional arguments can be passed to the nonlinear optimizer. In particular, both Nelder_Mead and bobyqa use maxfun to specify the maximum number of function evaluations they will try before giving up - in contrast to optim and optimx-wrapped optimizers, which use maxit.  
+
+nAGQ
+The expression for the likelihood of a mixed-effects model is an integral over the random effects
+space.   For  a  linear  mixed-effects  model  (LMM),  this  integral  can  be  evaluated
+exactly.  For a GLMM the integral must be approximated.   The most reliable approximation for
+GLMMs  is  adaptive  Gauss-Hermite  quadrature. The nAGQ argument controls the number of nodes in the quadrature formula.  Currently, nAGQ>1 is implemented  only  for  models  with  a single scalar random effect.
+A model with a single, scalar random-effects term could reasonably use up to 25 quadrature points per scalar integral.
+
+
+
+```{r}
+
+m01_nAGQ3 <- glmer(remission ~ IL6 + CRP + Married +
+ +(1|HID), data = hdp, family = binomial, nAGQ=3,
+    control = glmerControl(optimizer = "bobyqa"))
+
+
+
+
+summary(m01_nAGQ3)
+
+
+
+
+library(optimx)
+m02_nlminb <- update(m02, control = glmerControl(optimizer= "optimx", 
+                                                 optCtrl  = list(method="nlminb")))
+```
+Example 2 MALIGNANT MELANOMA MORTALITY AND UV EXPOSURE IN THE EUROPEAN COMMUNITY 1970-1980. Nine countries are included with response is the number of male deaths due to MM during 1971-1980 
+
+
+```{r}
+library(lme4)
+
+Mmmec=read.csv("melanoma.csv")
+#Nation code
+#1 = Belgium
+#2 = W. Germany
+#3 = Denmark
+#4 = France
+#5 = UK
+#6 = Italy
+#7 = Ireland
+#8 = Luxembourg
+#9 = Netherlands
+
+head(Mmmec) ##aggregated data
+dim(Mmmec)
+attach(Mmmec)
+
+table(nation)
+table(paste(nation, region, sep="_"))
+
+
+plot(edeath, death)
+
+hist(UVB) #Epidemiological index of UVB
+##Measure of the UVB dose reaching the earth's surface in each county and centered
+
+
+library(ggplot2)
+ggplot(Mmmec, aes(UVB)) +
+  geom_histogram(fill = "white", colour = "black") +
+  facet_grid(nation~ .)
+
+ggplot(Mmmec, aes(x=UVB, y=death))  +geom_point(size=2)+
+  facet_grid(nation~ .)
+
+
+
+fm1 <- glmer(death ~ UVB + (1|nation), Mmmec, poisson, offset = (edeath) )
+fm1
+
+
+fm2 <- glmer(death ~ UVB+ (1|nation/region), Mmmec, poisson, offset = (edeath))
+fm2
+
+
+fm3<- glmer(death ~ UVB+ (UVB|nation),  Mmmec,  poisson,  offset = (edeath))
+fm3
+
+
+fm4<- glmer(death ~ UVB+ (UVB|nation/region), Mmmec, poisson, offset = (edeath))
+fm4
+
+
+anova(fm1, fm2, fm3, fm4)
+
+
+fm5<- glmer(death ~ UVB + (1|county)+(1|nation/region), Mmmec, poisson, offset = (edeath))
+fm5
+
+
+fm6<- glmer(death ~ UVB + (1|county)+ (UVB-1|region), Mmmec, poisson, offset = (edeath))
+fm6
+
+
+fm7<- glmer(death ~ UVB + (1|county)+ (UVB-1|nation/region), Mmmec, poisson, offset = (edeath))
+fm7
+
+anova(fm5, fm6, fm7)
+
+
+
+
+
+
+```
+ 
+
+Example 3: RIKZ data contains the response variable is species richness (number  of   species)    
+Predictor    variables    are:    
+        NAP:    height    of    a    sampling    station    compared    to    mean    tidal    level    (site)    
+        Exposure:    index    composed    of    wave    action,    length    of    surf    slope,    etc.   
+        (beach)
+        
+```{r}
+library(lme4)
+library(nlme)
+library(arm) #an R package for Data Analysis Using Regression and Multilevel/Hierarchical Models
+load("rikz.RData")
+
+pairs(data[,2:4])
+
+mod1<-lme(Richness~NAP+Exposure,data=data,random=~1|Beach,method="ML")
+mod1_lmer<-lmer(Richness~NAP+Exposure+(1|Beach),data=data,REML=FALSE)
+
+ 
+summary(mod1)
+summary(mod1_lmer)
+
+mod1_glmer<-glmer(Richness~NAP+Exposure+(1|Beach),data=data,family="poisson")
+summary(mod1_glmer)
+
+#simulation based inference from the arm package
+n.sim<-1000
+simu<-sim(mod1_glmer,n.sims=n.sim) ##simulations of beta
+head(simu@fixef)
+#95% credible interval
+apply(simu@fixef,2,quantile,prob=c(0.025,0.5,0.975))
+
+#plotting the effect of NAP on the richness
+nsim <- 1000
+bsim <- sim(mod1_glmer, n.sim=nsim)
+newdat <- data.frame(NAP=seq(-1.5, 2.5, length=100),Exposure=mean(data$Exposure))
+Xmat <- model.matrix(~NAP+Exposure, data=newdat)
+head(Xmat[1:10, ])
+
+predmat <- matrix(ncol=nsim, nrow=nrow(newdat))
+predmat<-apply(bsim@fixef,1,function(x) exp(Xmat%*%x)) ###assume random intercept is zero
+newdat$lower <- apply(predmat, 1, quantile, prob=0.025)
+newdat$upper <- apply(predmat, 1, quantile, prob=0.975)
+newdat$med<-apply(predmat, 1, quantile, prob=0.5)
+
+plot(Richness~NAP, data=data, pch=16, las=1, cex.lab=1.4, cex.axis=1.2)
+lines(newdat$NAP,newdat$med,col="blue",lty=1,lwd=1.5)
+lines(newdat$NAP,newdat$upper,col="red",lty=2,lwd=1.5)
+lines(newdat$NAP,newdat$lower,col="red",lty=2,lwd=1.5)
+
+```
+        
+

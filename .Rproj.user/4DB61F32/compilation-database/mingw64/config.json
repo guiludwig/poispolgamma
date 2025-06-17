@@ -1,0 +1,25 @@
+{
+    "args": [
+        "-std=gnu++17",
+        "-IC:/PROGRA~1/R/R-44~1.1/include",
+        "-DNDEBUG",
+        "-IC:/Users/GUILHE~1/AppData/Local/R/WIN-LI~1/4.4/Rcpp/include",
+        "-IC:/Users/GUILHE~1/AppData/Local/R/WIN-LI~1/4.4/RCPPEI~1/include",
+        "-DEIGEN_DONT_VECTORIZE",
+        "-nostdinc",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/include/c++",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/include/c++/x86_64-w64-mingw32.static.posix",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/include/c++/backward",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/include",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/../../../../include",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/include-fixed",
+        "-include",
+        "C:/Users/Guilherme Ludwig/Dropbox/Multivariate counting data/code/poispolgamma/.Rproj.user/4DB61F32/compilation-database/mingw64/cpp-definitions.h"
+    ],
+    "pch": "RcppEigen",
+    "is_cpp": true,
+    "hash": "1698088764",
+    "compiler": "17242515186048361950",
+    "rversion": "4.4.1",
+    "dbversion": 4
+}

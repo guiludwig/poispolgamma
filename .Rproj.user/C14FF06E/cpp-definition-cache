@@ -1,0 +1,44 @@
+[
+    {
+        "file": "D:/Dropbox/Multivariate counting data/code/poispolgamma/src/rpolgamma.cpp",
+        "file_last_write": 1577945639.0,
+        "definitions": [
+            {
+                "usr": "c:@F@anx#I#d#d#",
+                "kind": 6,
+                "parent_name": "",
+                "name": "anx(int, double, double)",
+                "file": "D:/Dropbox/Multivariate counting data/code/poispolgamma/src/rpolgamma.cpp",
+                "line": 23,
+                "column": 8
+            },
+            {
+                "usr": "c:@F@rinvtnorm#1d#1d#",
+                "kind": 6,
+                "parent_name": "",
+                "name": "rinvtnorm(const double, const double)",
+                "file": "D:/Dropbox/Multivariate counting data/code/poispolgamma/src/rpolgamma.cpp",
+                "line": 36,
+                "column": 8
+            },
+            {
+                "usr": "c:@F@pigauss#1d#1I#",
+                "kind": 6,
+                "parent_name": "",
+                "name": "pigauss(const double, const int)",
+                "file": "D:/Dropbox/Multivariate counting data/code/poispolgamma/src/rpolgamma.cpp",
+                "line": 80,
+                "column": 21
+            },
+            {
+                "usr": "c:@F@rpolgamma#1I#1d#1I#",
+                "kind": 6,
+                "parent_name": "",
+                "name": "rpolgamma(const int, const double, const int)",
+                "file": "D:/Dropbox/Multivariate counting data/code/poispolgamma/src/rpolgamma.cpp",
+                "line": 93,
+                "column": 21
+            }
+        ]
+    }
+]

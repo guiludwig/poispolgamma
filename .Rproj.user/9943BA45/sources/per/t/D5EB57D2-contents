@@ -1,0 +1,63 @@
+library("readxl")
+#library("xlsx")
+library(dplyr)
+library(ggplot2)
+ 
+userID= "yuan-admin" #"ywang"#"zzlcs" #
+setwd( paste("C:/Users/", userID, "/Dropbox/research/Jiang/randomGeneGroup", sep=""))
+
+df_gene = read_excel(paste("C:/Users/", userID, "/Dropbox/research/Jiang/data/Cattle Gene Biotype Basics 11052022 Jiang.xlsx", sep=""), sheet =3)
+dim(df_gene)
+
+df_pathway = read.csv(paste("C:/Users/", userID, "/Dropbox/research/Jiang/data/Protein Coding Pathway Group APA13Refined.csv", sep=""))
+dim(df_pathway)
+
+# gene_list=df_gene$`Protein coding`
+# pathway_gene = df_pathway$gene
+# gene_frequency=NULL
+# 
+# for(i.gene in 1:nrow(df_gene)){
+#   
+#   gene=gene_list[i.gene]
+#   
+#   ind_gene= grepl( gene, pathway_gene)
+#   
+#   gene_frequency[i.gene]=sum(ind_gene)
+# }
+# 
+# df_gene$frequency = gene_frequency
+# 
+# write.csv(df_gene, paste("C:/Users/", userID, "/Dropbox/research/Jiang/data/Protein Coding gene.csv", sep=""), row.names = FALSE)
+
+
+df_gene=read.csv( paste("C:/Users/", userID, "/Dropbox/research/Jiang/data/Protein Coding gene.csv", sep=""))
+
+ggplot(df_gene, aes(x = `APAsites` , y = frequency)) +
+  geom_point()+geom_smooth()
+
+df_gene$APAgroup <- cut(df_gene$`APAsites`, breaks = c(0,1.1, 2.1, 3.1, 5.1,8.1,12.1, 17.1, 23.1, 30.1,  300), 
+    labels= c("APA1", "APA2", "APA3", "APA4-5", "APA6-8", "APA9-12", "APA13-17", "APA18-23", "APA24-30", "APA31up"))
+table(df_gene$APAgroup)
+
+subset(df_gene, frequency>1000)
+gene_dist <- group_by(df_gene, APAgroup )%>%
+  summarise(
+    count = n(),
+    mean = mean(frequency, na.rm = TRUE),
+    sd = sd(frequency, na.rm = TRUE),
+    max = max(frequency, na.rm = TRUE),
+    Q975=quantile(frequency, probs=0.975, na.rm = TRUE),
+    Q025=quantile(frequency, probs=0.025, na.rm = TRUE),
+    noshow=sum(frequency==0)
+  )
+gene_dist
+
+plot(x=c(1,2,3,4.5,7,11, 15,21,27,35), gene_dist$mean, xlab="APA", ylab="Mean Frequency")
+
+plot(x=c(1,2,3,4.5,7,11, 15,21,27,35), gene_dist$sd, xlab="APA", ylab="standard deviation of Frequency")
+
+ggplot(df_gene, aes(x = APAgroup , y = (frequency))) +
+  geom_boxplot()
+
+ggplot(df_gene, aes(x = APAgroup , y = log(frequency+1))) +
+  geom_boxplot()

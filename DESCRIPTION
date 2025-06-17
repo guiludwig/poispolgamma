@@ -1,0 +1,19 @@
+Package: poispolgamma
+Type: Package
+Title: Fit spatial Poisson regression with Pólya-Gamma sampler and Spike-and-Slab priors
+Version: 0.2.8
+Date: 2023-05-14
+Author: Guilherme Ludwig, Yuan Wang, Tingjin Chu, Haonan Wang, Jun Zhu
+Maintainer: Guilherme Ludwig <gvludwig@ime.unicamp.br>
+Description: TODO.
+License: GPL (>= 2)
+Encoding: UTF-8
+Depends:
+    geoR,
+    mvtnorm,
+    spNNGP (>= 0.1.3)
+Imports: 
+    Rcpp (>= 1.0.1),
+    RcppEigen
+LinkingTo: Rcpp, RcppEigen
+RoxygenNote: 7.2.3
